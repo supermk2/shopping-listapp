@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Shopping List</title>
+<style>
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    background: #f4f4f5;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .app {
+    width: 360px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 16px;
+  }
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .add-row input {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #d4d4d8;
+    border-radius: 4px;
+  }
+  .add-row button {
+    padding: 8px 14px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+  }
+  .add-row button:hover {
+    background: #2563eb;
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  li .text {
+    flex: 1;
+    font-size: 14px;
+  }
+  li.checked .text {
+    text-decoration: line-through;
+    color: #a1a1aa;
+  }
+  li button.delete-btn {
+    border: none;
+    background: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .empty {
+    color: #a1a1aa;
+    font-size: 13px;
+    text-align: center;
+    padding: 16px 0;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <h1>쇼핑 리스트</h1>
+    <div class="add-row">
+      <input id="item-input" type="text" placeholder="아이템 입력..." />
+      <button id="add-btn">추가</button>
+    </div>
+    <ul id="item-list"></ul>
+  </div>
+
+<script>
+const listEl = document.getElementById("item-list");
+const inputEl = document.getElementById("item-input");
+
+async function fetchItems() {
+  const res = await fetch("/api/items");
+  const items = await res.json();
+  render(items);
+}
+
+function render(items) {
+  listEl.innerHTML = "";
+  if (items.length === 0) {
+    listEl.innerHTML = '<div class="empty">아이템이 없습니다</div>';
+    return;
+  }
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.className = item.checked ? "checked" : "";
+    li.innerHTML = `
+      <input type="checkbox" ${item.checked ? "checked" : ""} />
+      <span class="text"></span>
+      <button class="delete-btn">×</button>
+    `;
+    li.querySelector(".text").textContent = item.text;
+    li.querySelector('input[type="checkbox"]').addEventListener("change", (e) =>
+      toggleItem(item.id, e.target.checked)
+    );
+    li.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
+    listEl.appendChild(li);
+  }
+}
+
+async function addItem() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  await fetch("/api/items", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  inputEl.value = "";
+  fetchItems();
+}
+
+async function toggleItem(id, checked) {
+  await fetch(`/api/items/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ checked }),
+  });
+  fetchItems();
+}
+
+async function deleteItem(id) {
+  await fetch(`/api/items/${id}`, { method: "DELETE" });
+  fetchItems();
+}
+
+document.getElementById("add-btn").addEventListener("click", addItem);
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") addItem();
+});
+
+fetchItems();
+</script>
+</body>
+</html>
